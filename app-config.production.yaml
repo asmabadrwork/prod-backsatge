@@ -37,8 +37,6 @@ auth:
       dangerouslyAllow: true
 
 catalog:
-  rules:
-    - allow: ['*']
   locations:
     - type: file
       target: ./examples/entities.yaml
