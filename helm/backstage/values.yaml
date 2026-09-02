@@ -34,6 +34,7 @@ backstage:
 # PostgreSQL Database Configuration
 postgres:
   enabled: true # Set to false when using external PostgreSQL (e.g. AWS RDS)
+  createSecret: true # Set to false if you manually created backstage-postgres-secrets via kubectl
   host: ""      # Set host if postgres.enabled is false
   port: 5432
   user: backstage
@@ -60,7 +61,7 @@ tls:
 
 # Application Secrets Management
 secrets:
-  create: true
+  create: true # Set to false if you manually created backstage-secrets via kubectl
   name: backstage-secrets
   githubToken: ""
   backendSecret: ""
