@@ -1,0 +1,66 @@
+# Production Domain Configuration
+domain: backstage.tyagi.fun
+
+# Backstage Application Configuration
+backstage:
+  replicaCount: 2
+  image:
+    repository: 628031635452.dkr.ecr.ap-south-1.amazonaws.com/backstage
+    tag: 1.0.0
+    pullPolicy: Always
+  imagePullSecrets:
+    - name: ecr-secret
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 7007
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+  probes:
+    liveness:
+      path: /.well-known/backstage/manifest.json
+      initialDelaySeconds: 60
+      periodSeconds: 15
+    readiness:
+      path: /.well-known/backstage/manifest.json
+      initialDelaySeconds: 30
+      periodSeconds: 10
+
+# PostgreSQL Database Configuration
+postgres:
+  enabled: true # Set to false when using external PostgreSQL (e.g. AWS RDS)
+  host: ""      # Set host if postgres.enabled is false
+  port: 5432
+  user: backstage
+  password: "change-me-in-production"
+  database: postgres
+  ssl: false
+  image: postgres:15-alpine
+  persistence:
+    enabled: true
+    storage: 5Gi
+    storageClass: "" # Empty uses cluster default StorageClass (e.g., gp3). Set to "manual" only if using hostPath PV.
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# TLS Configuration
+tls:
+  enabled: true
+  secretName: backstage-tls
+
+# Application Secrets Management
+secrets:
+  create: true
+  name: backstage-secrets
+  githubToken: ""
+  backendSecret: ""

@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "backstage.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "backstage.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.backstage.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "backstage.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "backstage.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.backstage.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: backstage
+          image: "{{ .Values.backstage.image.repository }}:{{ .Values.backstage.image.tag }}"
+          imagePullPolicy: {{ .Values.backstage.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 7007
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-postgres-secrets
+            - secretRef:
+                name: {{ .Values.secrets.name }}
+          env:
+            - name: POSTGRES_HOST
+              value: {{ if .Values.postgres.enabled }}{{ include "backstage.fullname" . }}-postgres{{ else }}{{ .Values.postgres.host | quote }}{{ end }}
+            - name: POSTGRES_PORT
+              value: {{ .Values.postgres.port | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.user | quote }}
+            - name: POSTGRES_DATABASE
+              value: {{ .Values.postgres.database | quote }}
+            - name: POSTGRES_SSL
+              value: {{ .Values.postgres.ssl | quote }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.backstage.probes.readiness.path }}
+              port: 7007
+            initialDelaySeconds: {{ .Values.backstage.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backstage.probes.readiness.periodSeconds }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.backstage.probes.liveness.path }}
+              port: 7007
+            initialDelaySeconds: {{ .Values.backstage.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.backstage.probes.liveness.periodSeconds }}
+          resources:
+            {{- toYaml .Values.backstage.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "backstage.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "backstage.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.backstage.service.type }}
+  selector:
+    {{- include "backstage.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.backstage.service.port }}
+      targetPort: {{ .Values.backstage.service.targetPort }}

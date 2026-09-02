@@ -1,0 +1,57 @@
+app:
+  baseUrl: https://backstage.tyagi.fun
+
+backend:
+  baseUrl: https://backstage.tyagi.fun
+  listen:
+    port: 7007
+    host: 0.0.0.0
+  csp:
+    connect-src: ["'self'", 'http:', 'https:']
+    upgrade-insecure-requests: false
+
+  cors:
+    origin: https://backstage.tyagi.fun
+    methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+    credentials: true
+
+  # Service-to-service authentication in production
+  # auth:
+  #   keys:
+  #     - secret: ${BACKEND_SECRET}
+
+  database:
+    client: pg
+    connection:
+      host: ${POSTGRES_HOST}
+      port: ${POSTGRES_PORT}
+      user: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+      database: ${POSTGRES_DATABASE}
+      ssl: ${POSTGRES_SSL}
+
+# Production Authentication Configuration
+# Guest auth MUST NOT be used in production. Configure a real provider below.
+auth:
+  providers:
+    # Example GitHub OAuth setup for production:
+    # github:
+    #   development:
+    #     clientId: ${AUTH_GITHUB_CLIENT_ID}
+    #     clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
+    guest: {}
+
+catalog:
+  rules:
+    - allow: ['*']
+  locations:
+    - type: file
+      target: ./examples/entities.yaml
+    - type: file
+      target: ./examples/template/template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ./examples/org.yaml
+      rules:
+        - allow: [User, Group]

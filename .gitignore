@@ -1,0 +1,17 @@
+# Dependencies & Build Outputs
+node_modules/
+dist/
+dist-types/
+packages/*/dist/
+packages/*/node_modules/
+*.log
+.DS_Store
+
+# Secrets & Certificates (NEVER COMMIT THESE)
+*.crt
+*.key
+kubernetes/postgres-secrets.yaml
+kubernetes/backstage-secrets.yaml
+kubernetes/ecr-secret.yaml
+kubernetes/backstage-secrets.yaml.example
+

@@ -1,0 +1,141 @@
+name: Backstage CD Production Deployment
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+env:
+  CI: 'true'
+  NODE_OPTIONS: '--max-old-space-size=8192'
+
+jobs:
+  # STAGE 1: Secret Scanning
+  secret-scanning:
+    name: Secret Scanning (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Run Gitleaks Secret Scanner
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+  # STAGE 2: Code Validation
+  validation:
+    name: Lint & Type Check
+    needs: secret-scanning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'yarn'
+      - name: Install Dependencies
+        run: yarn install --immutable
+      - name: Linting
+        run: yarn backstage-cli repo lint
+      - name: Type Checking
+        run: yarn tsc:full
+
+  # STAGE 3: Config Validation
+  config-check:
+    name: Config Check
+    needs: validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'yarn'
+      - name: Install Dependencies
+        run: yarn install --immutable
+      - name: Config Validation
+        run: |
+          yarn backstage-cli config:check --lax --strict \
+            --config app-config.yaml \
+            --config app-config.production.yaml
+
+  # STAGE 4: Build Release Bundle
+  build-bundle:
+    name: Build Release Bundle
+    needs: config-check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'yarn'
+      - name: Install Dependencies
+        run: yarn install --immutable
+      - name: Build All Packages
+        run: yarn build:all
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-dist
+          path: packages/backend/dist/
+
+  # STAGE 5: Build Docker Container & Push to AWS ECR
+  push-ecr:
+    name: Push to Amazon ECR
+    needs: build-bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-dist
+          path: packages/backend/dist/
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and Push Docker Image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: backstage
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+  # STAGE 6: Deploy to Kubernetes Cluster via Helm
+  deploy-k8s:
+    name: Deploy to Kubernetes (Helm)
+    needs: push-ecr
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Helm Deployment via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            export KUBECONFIG=/home/ubuntu/.kube/config
+            /usr/local/bin/helm upgrade --install backstage /home/ubuntu/backstage/helm/backstage \
+              --namespace backstage \
+              --set backstage.image.tag=${{ github.sha }}
+            /usr/local/bin/kubectl rollout status deployment backstage -n backstage
+
