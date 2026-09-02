@@ -17,8 +17,8 @@ backend:
 
   auth:
     dangerouslyDisableDefaultAuthPolicy: true
-    # keys:
-    #   - secret: ${BACKEND_SECRET}
+    keys:
+      - secret: ${BACKEND_SECRET}
 
   database:
     client: pg
@@ -28,18 +28,13 @@ backend:
       user: ${POSTGRES_USER}
       password: ${POSTGRES_PASSWORD}
       database: ${POSTGRES_DATABASE}
-      ssl: ${POSTGRES_SSL}
+      ssl: false
 
 # Production Authentication Configuration
-# Guest auth MUST NOT be used in production. Configure a real provider below.
 auth:
   providers:
-    # Example GitHub OAuth setup for production:
-    # github:
-    #   development:
-    #     clientId: ${AUTH_GITHUB_CLIENT_ID}
-    #     clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
-    guest: {}
+    guest:
+      dangerouslyAllow: true
 
 catalog:
   rules:
