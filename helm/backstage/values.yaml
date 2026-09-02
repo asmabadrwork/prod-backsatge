@@ -23,11 +23,11 @@ backstage:
       memory: 512Mi
   probes:
     liveness:
-      path: /.well-known/backstage/manifest.json
+      path: /healthcheck
       initialDelaySeconds: 60
       periodSeconds: 15
     readiness:
-      path: /.well-known/backstage/manifest.json
+      path: /healthcheck
       initialDelaySeconds: 30
       periodSeconds: 10
 
