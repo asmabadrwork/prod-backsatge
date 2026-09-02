@@ -15,10 +15,10 @@ backend:
     methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
     credentials: true
 
-  # Service-to-service authentication in production
-  # auth:
-  #   keys:
-  #     - secret: ${BACKEND_SECRET}
+  auth:
+    dangerouslyDisableDefaultAuthPolicy: true
+    # keys:
+    #   - secret: ${BACKEND_SECRET}
 
   database:
     client: pg
