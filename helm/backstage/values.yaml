@@ -1,11 +1,11 @@
 # Production Domain Configuration
-domain: backstage.tyagi.fun
+domain: example.com
 
 # Backstage Application Configuration
 backstage:
   replicaCount: 2
   image:
-    repository: 628031635452.dkr.ecr.ap-south-1.amazonaws.com/backstage
+    repository: <AWS_ACCOUNT_ID>.dkr.ecr.<AWS_REGION>.amazonaws.com/backstage
     tag: 1.0.0
     pullPolicy: Always
   imagePullSecrets:

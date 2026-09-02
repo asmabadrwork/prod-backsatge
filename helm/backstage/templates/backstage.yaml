@@ -32,6 +32,10 @@ spec:
             - secretRef:
                 name: {{ .Values.secrets.name }}
           env:
+            - name: APP_BASE_URL
+              value: "https://{{ .Values.domain }}"
+            - name: BACKEND_BASE_URL
+              value: "https://{{ .Values.domain }}"
             - name: POSTGRES_HOST
               value: {{ if .Values.postgres.enabled }}{{ include "backstage.fullname" . }}-postgres{{ else }}{{ .Values.postgres.host | quote }}{{ end }}
             - name: POSTGRES_PORT
